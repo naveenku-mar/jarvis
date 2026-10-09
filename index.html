@@ -147,11 +147,33 @@
 
     // 3. Connect to AI Model
     async function queryAI(prompt) {
-      // Direct local simulation (replace with fetch call to Gemini/OpenAI API)
-      if (prompt.toLowerCase().includes("who are you")) {
-        return "I am KALKI, your autonomous mobile intelligence.";
+    // 3. Connect to Live Gemini AI Model
+    async function queryAI(prompt) {
+      const apiKey = AQ.Ab8RN6L-zjnicC2wDpfHF1LFrLP1RcF9iR51Qu76_C0D8U9TYQ ; // <-- Paste your Google AI Studio API key here
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }]
+          })
+        });
+
+        const data = await response.json();
+        
+        // Extract the text reply from Gemini's response structure
+        if (data.candidates && data.candidates[0].content.parts[0].text) {
+          return data.candidates[0].content.parts[0].text;
+        } else {
+          return "I received an empty response from the network.";
+        }
+      } catch (error) {
+        console.error("API Error:", error);
+        return "Error connecting to neural network.";
       }
-      return `Processed your request regarding: ${prompt}`;
+    }
     }
 
     // 4. Voice Output
