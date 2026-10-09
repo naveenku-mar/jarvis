@@ -2,10 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>KALKI / AI Assistant</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+      -webkit-tap-highlight-color: transparent;
+    }
     body {
       background: radial-gradient(circle at 50% 20%, #0a192f, #020617);
       color: #e2e8f0;
@@ -14,79 +20,86 @@
       flex-direction: column;
       align-items: center;
       justify-content: space-between;
-      padding: 24px;
+      padding: 24px 16px;
       text-align: center;
+      overflow-x: hidden;
     }
     .hud-title {
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       letter-spacing: 2px;
       color: #38bdf8;
       text-transform: uppercase;
       margin-top: 10px;
     }
     h1 {
-      font-size: 2.2rem;
+      font-size: clamp(1.8rem, 6vw, 2.5rem);
       font-weight: 800;
       color: #38bdf8;
-      margin: 16px 0 8px;
+      margin: 12px 0 6px;
       line-height: 1.1;
     }
     .status {
-      font-size: 0.85rem;
-      padding: 4px 12px;
+      font-size: 0.8rem;
+      padding: 4px 14px;
       border: 1px solid #0284c7;
       border-radius: 20px;
       color: #38bdf8;
-      background: rgba(2, 132, 199, 0.1);
+      background: rgba(2, 132, 199, 0.15);
       display: inline-block;
-      margin-bottom: 20px;
+      margin-bottom: 15px;
     }
-    /* Animated Glowing Core */
     .orb-container {
       position: relative;
-      width: 160px;
-      height: 160px;
-      margin: 30px auto;
+      width: 150px;
+      height: 150px;
+      margin: 20px auto;
       display: flex;
       align-items: center;
       justify-content: center;
     }
     .orb {
-      width: 90px;
-      height: 90px;
+      width: 85px;
+      height: 85px;
       background: radial-gradient(circle, #38bdf8, #2563eb);
       border-radius: 50%;
-      box-shadow: 0 0 40px #0284c7, 0 0 80px rgba(56, 189, 248, 0.4);
-      transition: transform 0.3s ease;
+      box-shadow: 0 0 35px #0284c7, 0 0 70px rgba(56, 189, 248, 0.35);
+      transition: transform 0.3s ease, background 0.3s ease;
     }
     .orb.listening {
       animation: pulse 1.2s infinite ease-in-out;
       background: radial-gradient(circle, #f43f5e, #be123c);
-      box-shadow: 0 0 50px #f43f5e;
+      box-shadow: 0 0 45px #f43f5e, 0 0 80px rgba(244, 63, 94, 0.4);
     }
     @keyframes pulse {
       0% { transform: scale(1); }
-      50% { transform: scale(1.2); }
+      50% { transform: scale(1.18); }
       100% { transform: scale(1); }
     }
     .output {
       font-size: 0.95rem;
       color: #94a3b8;
-      min-height: 48px;
-      max-width: 90%;
+      min-height: 52px;
+      max-width: 92%;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
     .action-btn {
       background: #0369a1;
       color: #fff;
       border: 1px solid #38bdf8;
-      padding: 12px 28px;
+      padding: 14px 32px;
       border-radius: 30px;
-      font-size: 1rem;
+      font-size: 1.05rem;
       cursor: pointer;
       font-weight: 600;
-      box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.25);
+      touch-action: manipulation;
+      transition: transform 0.1s ease;
     }
-    .action-btn:active { transform: scale(0.96); }
+    .action-btn:active { 
+      transform: scale(0.95); 
+    }
   </style>
 </head>
 <body>
@@ -111,45 +124,105 @@
     const orb = document.getElementById('ai-orb');
     const statusTag = document.getElementById('status-tag');
 
-    // 1. Voice Recognition Setup
+    // Detect mobile device
+    const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
     if (!SpeechRecognition) {
-      output.innerText = "Web Speech API is not supported in this browser. Use Chrome/Android Chrome.";
+      output.innerText = "Error: Speech recognition not supported in this browser. Please use Chrome.";
+    } else {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      wakeBtn.addEventListener('click', () => {
+        try {
+          output.innerText = "Listening... Speak now!";
+          statusTag.innerText = "LISTENING...";
+          orb.classList.add('listening');
+          recognition.start();
+        } catch (err) {
+          output.innerText = "Recognition active or starting...";
+        }
+      });
+
+      recognition.onresult = async (event) => {
+        const userText = event.results[0][0].transcript;
+        output.innerText = `Heard: "${userText}"`;
+        orb.classList.remove('listening');
+        statusTag.innerText = "PROCESSING...";
+
+        // 1. Check for App Opening Commands
+        const handled = handleAppCommands(userText);
+        if (handled) {
+          statusTag.innerText = "SYSTEM ONLINE";
+          return;
+        }
+
+        // 2. Fall back to Gemini AI for regular questions
+        statusTag.innerText = "THINKING...";
+        const reply = await queryAI(userText);
+        output.innerText = `KALKI: ${reply}`;
+        statusTag.innerText = "SYSTEM ONLINE";
+        speak(reply);
+      };
+
+      recognition.onerror = (event) => {
+        orb.classList.remove('listening');
+        statusTag.innerText = "ERROR";
+        output.innerText = `Voice Error: ${event.error}`;
+      };
+
+      recognition.onend = () => {
+        orb.classList.remove('listening');
+        if (statusTag.innerText === "LISTENING...") {
+          statusTag.innerText = "SYSTEM ONLINE";
+        }
+      };
     }
 
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
-    recognition.continuous = false;
+    // Handles open commands on both Laptop and Mobile
+    function handleAppCommands(rawPrompt) {
+      const prompt = rawPrompt.toLowerCase().trim();
 
-    // 2. Start Listening
-    wakeBtn.addEventListener('click', () => {
-      recognition.start();
-      orb.classList.add('listening');
-      statusTag.innerText = "LISTENING...";
-    });
+      // Open YouTube
+      if (prompt.includes("open youtube") || prompt.includes("launch youtube")) {
+        speak("Opening YouTube, Sir.");
+        output.innerText = "KALKI: Opening YouTube...";
 
-    recognition.onresult = async (event) => {
-      const userText = event.results[0][0].transcript;
-      output.innerText = `You: "${userText}"`;
-      orb.classList.remove('listening');
-      statusTag.innerText = "THINKING...";
+        if (isMobile) {
+          // On mobile, top-level assign triggers the installed YouTube app directly
+          window.location.assign("https://www.youtube.com");
+        } else {
+          // On laptops/desktops, open a new tab
+          const win = window.open("https://www.youtube.com", "_blank");
+          if (!win) window.location.href = "https://www.youtube.com";
+        }
+        return true;
+      }
 
-      const reply = await queryAI(userText);
-      output.innerText = `KALKI: ${reply}`;
-      speak(reply);
-      statusTag.innerText = "SYSTEM ONLINE";
-    };
+      // Open Chrome / Google
+      if (prompt.includes("open chrome") || prompt.includes("open browser") || prompt.includes("open google")) {
+        speak("Opening Google search.");
+        output.innerText = "KALKI: Opening Google...";
 
-    recognition.onerror = () => {
-      orb.classList.remove('listening');
-      statusTag.innerText = "SYSTEM ONLINE";
-    };
+        if (isMobile) {
+          window.location.assign("https://www.google.com");
+        } else {
+          const win = window.open("https://www.google.com", "_blank");
+          if (!win) window.location.href = "https://www.google.com";
+        }
+        return true;
+      }
 
-    // 3. Connect to AI Model
+      return false;
+    }
+
+    // Gemini API integration
     async function queryAI(prompt) {
-    // 3. Connect to Live Gemini AI Model
-    async function queryAI(prompt) {
-      const apiKey = AQ.Ab8RN6L-zjnicC2wDpfHF1LFrLP1RcF9iR51Qu76_C0D8U9TYQ ; // <-- Paste your Google AI Studio API key here
+      const apiKey = "AQ.Ab8RN6ImJrigVfyfz8N3VItZHtrxecun4WtApjU5LKDqY33K-A";
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
       try {
@@ -162,26 +235,30 @@
         });
 
         const data = await response.json();
-        
-        // Extract the text reply from Gemini's response structure
+
+        if (data.error) {
+          return `API Error: ${data.error.message}`;
+        }
+
         if (data.candidates && data.candidates[0].content.parts[0].text) {
           return data.candidates[0].content.parts[0].text;
         } else {
-          return "I received an empty response from the network.";
+          return "Received an empty response from the AI.";
         }
-      } catch (error) {
-        console.error("API Error:", error);
-        return "Error connecting to neural network.";
+      } catch (err) {
+        return `Network Error: ${err.message}`;
       }
     }
-    }
 
-    // 4. Voice Output
+    // Voice Synthesis Output
     function speak(text) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.pitch = 1.0;
-      utterance.rate = 1.0;
-      window.speechSynthesis.speak(utterance);
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        window.speechSynthesis.speak(utterance);
+      }
     }
   </script>
 </body>
