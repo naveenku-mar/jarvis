@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KALKI / AI Assistant</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body {
+      background: radial-gradient(circle at 50% 20%, #0a192f, #020617);
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px;
+      text-align: center;
+    }
+    .hud-title {
+      font-size: 0.85rem;
+      letter-spacing: 2px;
+      color: #38bdf8;
+      text-transform: uppercase;
+      margin-top: 10px;
+    }
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: #38bdf8;
+      margin: 16px 0 8px;
+      line-height: 1.1;
+    }
+    .status {
+      font-size: 0.85rem;
+      padding: 4px 12px;
+      border: 1px solid #0284c7;
+      border-radius: 20px;
+      color: #38bdf8;
+      background: rgba(2, 132, 199, 0.1);
+      display: inline-block;
+      margin-bottom: 20px;
+    }
+    /* Animated Glowing Core */
+    .orb-container {
+      position: relative;
+      width: 160px;
+      height: 160px;
+      margin: 30px auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .orb {
+      width: 90px;
+      height: 90px;
+      background: radial-gradient(circle, #38bdf8, #2563eb);
+      border-radius: 50%;
+      box-shadow: 0 0 40px #0284c7, 0 0 80px rgba(56, 189, 248, 0.4);
+      transition: transform 0.3s ease;
+    }
+    .orb.listening {
+      animation: pulse 1.2s infinite ease-in-out;
+      background: radial-gradient(circle, #f43f5e, #be123c);
+      box-shadow: 0 0 50px #f43f5e;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+    .output {
+      font-size: 0.95rem;
+      color: #94a3b8;
+      min-height: 48px;
+      max-width: 90%;
+    }
+    .action-btn {
+      background: #0369a1;
+      color: #fff;
+      border: 1px solid #38bdf8;
+      padding: 12px 28px;
+      border-radius: 30px;
+      font-size: 1rem;
+      cursor: pointer;
+      font-weight: 600;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+    }
+    .action-btn:active { transform: scale(0.96); }
+  </style>
+</head>
+<body>
+
+  <div>
+    <p class="hud-title">◈ KALKI / J.A.R.V.I.S.</p>
+    <h1>AI ASSISTANT</h1>
+    <span id="status-tag" class="status">SYSTEM ONLINE</span>
+  </div>
+
+  <div class="orb-container">
+    <div id="ai-orb" class="orb"></div>
+  </div>
+
+  <p id="chat-output" class="output">Tap below and speak to interact...</p>
+
+  <button id="wake-btn" class="action-btn">● WAKE KALKI</button>
+
+  <script>
+    const wakeBtn = document.getElementById('wake-btn');
+    const output = document.getElementById('chat-output');
+    const orb = document.getElementById('ai-orb');
+    const statusTag = document.getElementById('status-tag');
+
+    // 1. Voice Recognition Setup
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      output.innerText = "Web Speech API is not supported in this browser. Use Chrome/Android Chrome.";
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.continuous = false;
+
+    // 2. Start Listening
+    wakeBtn.addEventListener('click', () => {
+      recognition.start();
+      orb.classList.add('listening');
+      statusTag.innerText = "LISTENING...";
+    });
+
+    recognition.onresult = async (event) => {
+      const userText = event.results[0][0].transcript;
+      output.innerText = `You: "${userText}"`;
+      orb.classList.remove('listening');
+      statusTag.innerText = "THINKING...";
+
+      const reply = await queryAI(userText);
+      output.innerText = `KALKI: ${reply}`;
+      speak(reply);
+      statusTag.innerText = "SYSTEM ONLINE";
+    };
+
+    recognition.onerror = () => {
+      orb.classList.remove('listening');
+      statusTag.innerText = "SYSTEM ONLINE";
+    };
+
+    // 3. Connect to AI Model
+    async function queryAI(prompt) {
+      // Direct local simulation (replace with fetch call to Gemini/OpenAI API)
+      if (prompt.toLowerCase().includes("who are you")) {
+        return "I am KALKI, your autonomous mobile intelligence.";
+      }
+      return `Processed your request regarding: ${prompt}`;
+    }
+
+    // 4. Voice Output
+    function speak(text) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.pitch = 1.0;
+      utterance.rate = 1.0;
+      window.speechSynthesis.speak(utterance);
+    }
+  </script>
+</body>
+</html>
